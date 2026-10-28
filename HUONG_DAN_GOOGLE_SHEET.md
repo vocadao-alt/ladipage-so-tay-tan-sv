@@ -8,6 +8,7 @@ Tài liệu này hướng dẫn bạn cài đặt mã Google Apps Script để t
 
 - **ID Bảng tính**: `1OSvil1reU79m7g79HFMUqBejy8s1LUwDTh_mL_ryDOg`
 - **Tên trang tính (Sheet Tab)**: `Landing-page-so-tay-sinh-vien`
+- **URL Web App chính thức**: `https://script.google.com/macros/s/AKfycbzwE1M-foNz7g1ugCTENm7BxD4j9zeqluL4tC0fIK_7kv9Hl1KZ_aB5K2VDIiE0EA9P/exec`
 - **Các cột dữ liệu được lưu tự động**:
   1. `Thời gian gửi` (Timestamp)
   2. `Họ và tên`
