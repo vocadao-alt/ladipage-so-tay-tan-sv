@@ -1,129 +1,192 @@
-# HƯỚNG DẪN KẾT NỐI VÀ XỬ LÝ LỖI GOOGLE SHEET
-*(Dành cho dự án Sổ tay Sinh viên)*
+# HƯỚNG DẪN CẤU HÌNH GOOGLE APPS SCRIPT CHO SỔ TAY TÂN SINH VIÊN
+
+Tài liệu này hướng dẫn bạn cài đặt mã Google Apps Script để tự động đồng bộ mọi lượt gửi từ trang Landing Page vào bảng tính Google Sheet của bạn.
 
 ---
 
-## 🔍 NGUYÊN NHÂN VÌ SAO BẠN CHƯA THẤY DỮ LIỆU:
+## 📌 THÔNG TIN BẢNG TÍNH ĐÍCH
 
-Khi kiểm tra từ hệ thống, đường dẫn Web App của bạn **đang hoạt động và đã ghi nhận thành công đến dòng số 5** (`{"result":"success","row":5}`).
-
-Tuy nhiên, bạn chưa nhìn thấy trên màn hình là do 1 trong 2 khả năng sau:
-1. **Google Apps Script đang ghi vào một file Google Sheet khác** trong Google Drive của bạn (ví dụ file tạo lúc đầu, khác với file `Dữ liệu khách hàng - Sổ tay Tân SV` bạn đang mở).
-2. **Google Apps Script đang ghi vào một Tab khác** (ví dụ: tab Trang tính 2 thay vì Trang tính 1 ở dưới cùng màn hình).
+- **ID Bảng tính**: `1OSvil1reU79m7g79HFMUqBejy8s1LUwDTh_mL_ryDOg`
+- **Tên trang tính (Sheet Tab)**: `Landing-page-so-tay-sinh-vien`
+- **Các cột dữ liệu được lưu tự động**:
+  1. `Thời gian gửi` (Timestamp)
+  2. `Họ và tên`
+  3. `Vai trò` (Tân sinh viên, Học sinh THPT, Phụ huynh, ...)
+  4. `Địa chỉ Email`
+  5. `Nội dung bạn mong muốn tìm hiểu hoặc chủ đề bạn cần giải đáp`
 
 ---
 
-## 🛠️ CÁCH KHẮC PHỤC TRIỆT ĐỂ (TRONG 1 PHÚT):
+## 📝 BƯỚC 1: DÁN MÃ VÀO GOOGLE APPS SCRIPT
 
-Hãy cập nhật lại đoạn mã trong Google Apps Script với bản nâng cấp dưới đây. Bản này sẽ:
-- **Tự động gắn chính xác vào Tab đầu tiên** của bảng tính (`getSheets()[0]`).
-- **Tích hợp tính năng tự kiểm tra (doGet):** Bạn chỉ cần bấm vào đường link Web App trên trình duyệt là sẽ thấy ngay tên file Google Sheet và đường link dẫn thẳng tới file đang nhận dữ liệu!
-
-### Bước 1: Mở Apps Script
-1. Trên Google Sheet `Dữ liệu khách hàng - Sổ tay Tân SV`, bấm menu **Tiện ích mở rộng (Extensions)** -> **Apps Script**.
-2. Xóa toàn bộ mã cũ và dán toàn bộ đoạn mã mới dưới đây:
+1. Mở file Google Sheet của bạn trên trình duyệt (hoặc mở trực tiếp link: [Bảng tính Google Sheet của bạn](https://docs.google.com/spreadsheets/d/1OSvil1reU79m7g79HFMUqBejy8s1LUwDTh_mL_ryDOg/edit)).
+2. Trên thanh menu, chọn **Tiện ích mở rộng** (Extensions) -> **Apps Script**.
+3. Xóa toàn bộ nội dung trong trình soạn thảo `Code.gs` và dán đoạn mã sau vào:
 
 ```javascript
 /**
- * GOOGLE APPS SCRIPT - BẢN NÂNG CẤP CHUẨN XÁC 100%
+ * GOOGLE APPS SCRIPT CHO LANDING PAGE SỔ TAY TÂN SINH VIÊN
+ * Bảng tính ID: 1OSvil1reU79m7g79HFMUqBejy8s1LUwDTh_mL_ryDOg
+ * Tên trang tính: Landing-page-so-tay-sinh-vien
  */
 
-// 1. Hàm kiểm tra: Bấm vào link Web App trên trình duyệt sẽ thấy thông tin file nhận dữ liệu
+var SPREADSHEET_ID = "1OSvil1reU79m7g79HFMUqBejy8s1LUwDTh_mL_ryDOg";
+var SHEET_NAME = "Landing-page-so-tay-sinh-vien";
+
+// 1. Hàm kiểm tra kết nối qua trình duyệt (doGet)
 function doGet(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheets()[0]; // Luôn lấy tab đầu tiên
-  var lastRow = sheet.getLastRow();
-  var recentData = lastRow > 0 ? sheet.getRange(1, 1, lastRow, sheet.getLastColumn()).getValues() : [];
-
-  var info = {
-    "trang_thai": "Web App dang hoat dong tot!",
-    "ten_file_google_sheet": ss.getName(),
-    "link_mo_file_truc_tiep": ss.getUrl(),
-    "ten_tab_nhan_du_lieu": sheet.getName(),
-    "tong_so_dong_hien_co": lastRow,
-    "du_lieu_cac_dong": recentData
-  };
-
-  return ContentService
-    .createTextOutput(JSON.stringify(info, null, 2))
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME);
+      initHeaders(sheet);
+    }
+    
+    var lastRow = sheet.getLastRow();
+    
+    var response = {
+      status: "success",
+      message: "Google Apps Script đang hoạt động tốt và kết nối thành công!",
+      spreadsheet_name: ss.getName(),
+      spreadsheet_url: ss.getUrl(),
+      sheet_tab_name: sheet.getName(),
+      total_rows: lastRow
+    };
+    
+    return ContentService
+      .createTextOutput(JSON.stringify(response, null, 2))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", message: err.toString() }, null, 2))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
-// 2. Hàm nhận dữ liệu từ Form
+// 2. Hàm nhận dữ liệu từ Form (doPost)
 function doPost(e) {
   var lock = LockService.getScriptLock();
+  // Khóa tối đa 10 giây để chống xung đột ghi đồng thời
   lock.tryLock(10000);
-
+  
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    // LUÔN LẤY TAB ĐẦU TIÊN CỦA BẢNG TÍNH
-    var sheet = ss.getSheets()[0];
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(SHEET_NAME);
     
-    // Tự tạo tiêu đề nếu bảng tính còn trống
-    if (sheet.getLastRow() === 0) {
-      var headers = [
-        "Thời gian gửi", 
-        "Họ và tên", 
-        "Nhóm đối tượng", 
-        "Địa chỉ Email", 
-        "Lời nhắn / Câu hỏi băn khoăn"
-      ];
-      sheet.appendRow(headers);
-      
-      var headerRange = sheet.getRange(1, 1, 1, headers.length);
-      headerRange.setBackground("#1e3a5f");
-      headerRange.setFontColor("#ffffff");
-      headerRange.setFontWeight("bold");
-      headerRange.setHorizontalAlignment("center");
-      sheet.setFrozenRows(1);
-      sheet.setRowHeight(1, 38);
+    // Nếu tab chưa tồn tại, tự động tạo mới
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME);
     }
-
-    var params = (e && e.parameter) ? e.parameter : {};
+    
+    // Nếu bảng tính còn trống (chưa có header), khởi tạo tiêu đề
+    if (sheet.getLastRow() === 0) {
+      initHeaders(sheet);
+    }
+    
+    // Lấy dữ liệu gửi lên (hỗ trợ cả x-www-form-urlencoded và JSON)
+    var params = {};
+    if (e && e.parameter && Object.keys(e.parameter).length > 0) {
+      params = e.parameter;
+    } else if (e && e.postData && e.postData.contents) {
+      try {
+        params = JSON.parse(e.postData.contents);
+      } catch (jsonErr) {
+        // fallback
+      }
+    }
+    
     var timestamp = Utilities.formatDate(new Date(), "Asia/Ho_Chi_Minh", "dd/MM/yyyy HH:mm:ss");
     var name = params.name || "";
     var role = params.role_label || params.role || "";
     var email = params.email || "";
     var message = params.message || "";
-
-    // Ghi dòng mới
+    
+    // Thêm dòng mới vào sheet
     sheet.appendRow([timestamp, name, role, email, message]);
-
+    
+    var output = {
+      result: "success",
+      message: "Dữ liệu đã được ghi nhận thành công!",
+      row: sheet.getLastRow()
+    };
+    
     return ContentService
-      .createTextOutput(JSON.stringify({ result: "success", row: sheet.getLastRow() }))
+      .createTextOutput(JSON.stringify(output))
       .setMimeType(ContentService.MimeType.JSON);
-
+      
   } catch (err) {
+    var errOutput = {
+      result: "error",
+      message: err.toString()
+    };
     return ContentService
-      .createTextOutput(JSON.stringify({ result: "error", error: err.toString() }))
+      .createTextOutput(JSON.stringify(errOutput))
       .setMimeType(ContentService.MimeType.JSON);
-
   } finally {
     lock.releaseLock();
   }
 }
+
+// 3. Hàm khởi tạo tiêu đề cột và định dạng giao diện đẹp mắt
+function initHeaders(sheet) {
+  var headers = [
+    "Thời gian gửi",
+    "Họ và tên",
+    "Vai trò",
+    "Địa chỉ Email",
+    "Nội dung bạn mong muốn tìm hiểu hoặc chủ đề bạn cần giải đáp"
+  ];
+  sheet.appendRow(headers);
+  
+  var headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setBackground("#1e3a5f");     // Màu xanh navy
+  headerRange.setFontColor("#ffffff");      // Chữ trắng
+  headerRange.setFontWeight("bold");        // In đậm
+  headerRange.setHorizontalAlignment("center");
+  headerRange.setVerticalAlignment("middle");
+  sheet.setFrozenRows(1);                   // Cố định dòng 1
+  sheet.setRowHeight(1, 38);               // Chiều cao dòng tiêu đề
+  
+  // Tự động giãn độ rộng các cột
+  sheet.setColumnWidth(1, 160); // Thời gian
+  sheet.setColumnWidth(2, 180); // Họ và tên
+  sheet.setColumnWidth(3, 220); // Vai trò
+  sheet.setColumnWidth(4, 220); // Email
+  sheet.setColumnWidth(5, 420); // Nội dung
+}
 ```
 
-3. Bấm biểu tượng **Đĩa mềm (Lưu / Save / Ctrl + S)**.
+4. Nhấn biểu tượng **Lưu** (Ctrl + S / Cmd + S).
 
 ---
 
-### Bước 2: Triển khai phiên bản mới (CỰC KỲ QUAN TRỌNG)
-Trong Google Apps Script, mỗi lần sửa code bạn **phải cập nhật phiên bản triển khai** thì link mới nhận code mới:
-1. Bấm nút màu xanh **Triển khai (Deploy)** ở góc trên bên phải -> chọn **Quản lý phiên bản triển khai (Manage deployments)**.
-2. Bấm vào biểu tượng **Cây bút chì (Chỉnh sửa / Edit)** ở góc trên bên phải hộp thoại.
-3. Ở dòng **Phiên bản (Version)**, bấm chọn **Phiên bản mới (New version)**.
-4. Đảm bảo mục **Ai có quyền truy cập (Who has access)** vẫn là **Bất kỳ ai (Anyone)**.
-5. Bấm nút **Triển khai (Deploy)**.
+## 🚀 BƯỚC 2: TRIỂN KHAI THÀNH WEB APP (DEPLOY)
+
+> [!IMPORTANT]
+> Bước cấu hình quyền này rất quan trọng để mọi người vào xem landing page đều gửi được dữ liệu.
+
+1. Ở góc trên bên phải của màn hình Apps Script, bấm nút **Triển khai** (Deploy) -> chọn **Tùy chọn triển khai mới** (New deployment).
+2. Tại mục **Chọn loại** (hình bánh răng bên trái), chọn **Ứng dụng web** (Web app).
+3. Điền các trường cấu hình như sau:
+   - **Mô tả** (Description): `LadiPage So tay Sinh vien v1`
+   - **Thực thi dưới dạng** (Execute as): **Tôi** (`Me - your_email@gmail.com`)
+   - **Ai có quyền truy cập** (Who has access): **Bất kỳ ai** (`Anyone`) *(Bắt buộc chọn Anyone để khách truy cập website không cần đăng nhập Google vẫn gửi được)*
+4. Bấm nút **Triển khai** (Deploy).
+5. Nếu Google hiển thị thông báo yêu cầu cấp quyền:
+   - Bấm **Ủy quyền truy cập** (Authorize access) -> Chọn tài khoản Google của bạn.
+   - Bấm **Nâng cao** (Advanced) -> Bấm **Đi tới... (không an toàn)** / `Go to ... (unsafe)`.
+   - Bấm **Cho phép** (Allow).
+6. Sau khi hoàn tất, Google sẽ cấp cho bạn một **URL ứng dụng web** (Web app URL) có định dạng:
+   `https://script.google.com/macros/s/AKfycb.../exec`
+7. Hãy sao chép (Copy) đường dẫn này.
 
 ---
 
-### Bước 3: Kiểm tra link Web App
-Sau khi cập nhật:
-- Bạn hãy nhấp trực tiếp vào đường link Web App trên trình duyệt:
-  `https://script.google.com/macros/s/AKfycbwWBPf5yA8aTFQdGjRqKmzDZl7FU--8rfyVqn810b6Ck2xmPZvLt5Zkqj0xkmHOPAO-/exec`
-- Trang web sẽ hiện ra thông tin dạng chữ:
-  - `"ten_file_google_sheet"`
-  - `"link_mo_file_truc_tiep"`: Bạn bấm vào link này sẽ mở ra đúng file Google Sheet đang nhận dữ liệu!
-  - `"tong_so_dong_hien_co"`
-- Khi quay lại landing page bấm gửi, dữ liệu chắc chắn sẽ nhảy ngay vào tab đầu tiên của file!
+## 🔗 BƯỚC 3: CẬP NHẬT VÀO LANDING PAGE
+
+Gửi lại đường dẫn Web App URL bạn vừa nhận được ở bước trên cho tôi, hoặc dán trực tiếp vào:
+- File [index.html](file:///c:/Users/Admin/Downloads/LadiPage%20S%E1%BB%95%20tay%20T%C3%A2n%20SV/index.html) tại dòng:
+  `const GOOGLE_SHEET_WEBAPP_URL = "DÁN_URL_VÀO_ĐÂY";`
+  và thuộc tính `action="DÁN_URL_VÀO_ĐÂY"` của thẻ `<form id="inquiryForm">`.
